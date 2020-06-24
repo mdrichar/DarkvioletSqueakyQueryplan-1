@@ -2,6 +2,7 @@ from functools import reduce
 import itertools
 import operator
 import unittest
+import jsonpickle
 
 none_held = (0,0,0,0,0,0)
 no_row = -1
@@ -203,22 +204,22 @@ def getStateValue(state):
         max_value = -1000
         best_action = None
         for action in legal_actions(state):
-            print ("    Considering action: ", action)
+            #print ("    Considering action: ", action)
             immediate_reward = immediateReward(action,state)
             expected_future_value = 0
             total_prob = 0
             for (next_state, prob) in stateTransitionsFrom(action, state):
                 total_prob += prob
-                if not next_state in state_values:
-                    print("Not in there",next_state)
+                #if not next_state in state_values:
+                #    print("Not in there",next_state)
                 assert next_state in state_values
-                print("                 ",prob, next_state, "Val: ",state_values[next_state])
+                #print("                 ",prob, next_state, "Val: ",state_values[next_state])
                 expected_future_value += prob * state_values[next_state]
                 total_value = immediate_reward + expected_future_value
                 if total_value > max_value:
                     max_value = total_value
                     best_action = action
-            print("Action summary",immediate_reward,expected_future_value,total_value, "Total prob: ", total_prob)
+            #print("Action %s TV: %2f" % (action, total_value))
         #print("In ",state," value is ",max_value," by doing ",best_action)
         state_values[state] = max_value
         return (max_value, best_action)
@@ -267,31 +268,6 @@ def valueOf(row_choice, final_roll, remaining_rows):
   score_later = state_values(new_remaining_rows)
   return score_now + score_later
   
-
-#x = score_for((3,2,0,0,0,0),2)
-#print(x)
-#y = get_leftovers_after_playing((1,1,1),2)
-#print(y)
-
-# s = State((3,2,0,0,0,0),(0,1,1,0,0),1)
-# print("Before")
-# k = 0
-# j = 0
-# for action in legal_actions(s):
-#     print("Action",action)
-#     for next_state, prob in stateTransitionsFrom(action, s):
-#         #j=j+1
-#         print(next_state, prob)
-#     k =k + 1
-#     if k > 7:
-#         break
-
-# print("After")
-
-
-# for t in roll_outcomes[5]:
-#     print("Roll: ",t,"Scores: ",scores(t))
-
 def computeOneRowNoRoll():
     noRows = getNoRows()
     for row in range(len(noRows)):
@@ -300,19 +276,56 @@ def computeOneRowNoRoll():
             state = State(outcome,oneRow,0)
             (value, bestAction) = getStateValue(state)
 computeOneRowNoRoll()
-for k, v in state_values.items():
-    if v > 0 and k.remaining_rows[0] == 1:
-        print("Computed",k,v)
+#for k, v in state_values.items():
+#    if v > 0 and k.remaining_rows[0] == 1:
+#        print("Computed",k,v)
 print("COMPUTING ONE ROLL LEFT")
 def computeOneRowOneRoll():
     noRows = getNoRows()
-    for row in range(1):
+    for row in range(len(noRows)):
         oneRow = add_to(noRows,row)
         print(oneRow)
         for outcome in roll_outcomes[all_dice]:
              state = State(outcome,oneRow,1)
              (value, bestAction) = getStateValue(state)
              print("State: ",state, "Value: ", value, "Action: ",bestAction)
-             return
+             
 
-computeOneRowOneRoll()
+#computeOneRowOneRoll()
+jsonstr = jsonpickle.encode(state_values, unpicklable=True, keys=True)
+with open("sv0R.txt",'w') as ofile:
+    ofile.write(jsonstr)
+
+with open("sv0R.txt",'r') as ifile:
+    jsonstr = ifile.readlines()[0]
+#print(jsonstr)
+
+
+unpickled = jsonpickle.decode(jsonstr,keys=True)
+for svk, svv in unpickled.items():
+    print(svk,svv)
+
+def computeOneRow():
+    for rolls_remaining in range(3):
+        print("ROLLS REMAINING %i" % (rolls_remaining))
+        noRows = getNoRows()
+        for row in range(len(noRows)):
+            oneRow = add_to(noRows,row)
+            print(oneRow)
+            for outcome in roll_outcomes[all_dice]:
+                 state = State(outcome,oneRow,rolls_remaining)
+                 (value, bestAction) = getStateValue(state)
+                 #print("State: ",state, "Value: ", value, "Action: ",bestAction)
+#computeOneRow()
+
+num_rows =13
+turns_left = [ [] for _ in range(num_rows+1)] 
+for i in range(2**num_rows):
+    t = tuple(map(int,list("{0:013b}".format(i))))
+    num_used = sum(t)
+    turns_left[num_used].append(t)
+    
+sizes = [len(x) for x in turns_left]
+print(sizes)
+print(sum(sizes))
+             
